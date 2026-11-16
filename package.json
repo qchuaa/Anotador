@@ -1,0 +1,48 @@
+{
+  "name": "anotador",
+  "version": "1.0.0",
+  "description": "Cuadernos de clase para Windows",
+  "main": "src/main.cjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron .",
+    "build": "electron-builder --win portable"
+  },
+  "keywords": [],
+  "author": "Anotador",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "dictionary-es": "^4.0.0",
+    "lucide": "^1.73.0",
+    "nspell": "^2.1.5",
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-history": "^1.5.1",
+    "prosemirror-inputrules": "^1.6.0",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.13",
+    "prosemirror-schema-basic": "^1.2.5",
+    "prosemirror-schema-list": "^1.6.0",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.42.9"
+  },
+  "devDependencies": {
+    "electron": "^45.3.2",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.65.1"
+  },
+  "build": {
+    "appId": "com.anotador.desktop",
+    "productName": "Anotador",
+    "win": {
+      "signAndEditExecutable": false
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2"
+    ]
+  }
+}

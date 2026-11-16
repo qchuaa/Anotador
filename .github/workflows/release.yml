@@ -1,0 +1,41 @@
+name: Publicar Anotador para Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/release.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Publicar ejecutable
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "windows-${{ github.run_number }}"
+          $asset = Get-ChildItem -LiteralPath dist -Filter '*.exe' | Select-Object -First 1
+          if (-not $asset) { throw 'No se generó el ejecutable' }
+          gh release create $tag $asset.FullName --title "Anotador para Windows" --notes "Descargá el archivo .exe y abrilo en tu notebook con Windows. Configurá tu clave de OpenAI en Ajustes de IA. Los apuntes se guardan localmente en cada computadora." --target ${{ github.sha }} --latest

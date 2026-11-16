@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-*/
+*.lnk
+scripts/*preview.png
+scripts/qa-results.json
+*.log

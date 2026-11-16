@@ -1,0 +1,53 @@
+:root {
+  color-scheme: dark;
+  --surface: #191919;
+  --sidebar: #202020;
+  --raised: #252525;
+  --hover: #303030;
+  --border: #363636;
+  --text: #e3e3e0;
+  --muted: #a3a39e;
+}
+body { background: var(--surface); color: var(--text); }
+aside { background: var(--sidebar); border-color: #2c2c2c; }
+button { background: var(--raised); border-color: var(--border); transition: background 120ms ease; }
+button:hover { background: var(--hover); }
+aside button { background: transparent; }
+aside button:hover { background: var(--hover); }
+header, .class-row, .toolbar { border-color: #303030; }
+header, small, .hint, p.subtitle, aside .label { color: var(--muted); }
+.card { background: #202020; border-color: var(--border); box-shadow: 0 3px 12px #0002; }
+.card:hover { border-color: #62625c; background: #272727; }
+.cover { background: #30372f !important; color: #b6c6af; }
+.card:nth-child(3n + 2) .cover { background: #3a312b !important; color: #d2b79f; }
+.card:nth-child(3n) .cover { background: #2e333e !important; color: #adbdd8; }
+.tag { background: #33332f; color: #c4c4ba; }
+.toolbar, .paper { background: var(--surface); }
+.paper { border-color: #303030; }
+.editor:empty:before { color: #797975; }
+.primary { background: #deded9; color: #202020; border-color: #deded9; }
+.primary:hover { background: #f4f4ef; }
+.ai-note { background: #273029; border-left-color: #93b18e; }
+.correction { border-bottom-color: #97b493; }
+.shot.selected { border-color: #a0b89a; box-shadow: 0 0 0 2px #a0b89a25; }
+input, select { background: #242424; color: var(--text); border-color: #464646; }
+.title-input { background: transparent; border: 0; padding-left: 0; }
+dialog { background: #252525; color: var(--text); border-color: #494949; box-shadow: 0 20px 90px #0008; }
+dialog::backdrop { background: #0009; }
+#toast { background: #e2e2dc; color: #202020; box-shadow: 0 6px 30px #0006; }
+::selection { background: #476388; color: #fff; }
+:focus-visible { outline: 2px solid #91a9c6; outline-offset: 3px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #191919; }
+::-webkit-scrollbar-thumb { background: #414141; border: 2px solid #191919; border-radius: 6px; }
+aside .today-button {
+  background: #deded9;
+  color: #202020;
+  padding: 17px 18px;
+  margin: 0 0 22px;
+  font-size: 17px;
+  font-weight: 650;
+  text-align: center;
+  border-radius: 8px;
+}
+aside .today-button:hover { background: #f4f4ef; }
