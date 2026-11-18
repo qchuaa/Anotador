@@ -5,3 +5,5 @@ dist-*/
 scripts/*preview.png
 scripts/qa-results.json
 *.log
+
+tmp/
