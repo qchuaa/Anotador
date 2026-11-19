@@ -6,6 +6,7 @@ let win,dir,notion;
 if(!app.requestSingleInstanceLock()){app.quit();}else{
 app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
 app.whenReady().then(()=>{
+ ipcMain.handle('spelling',(_,words)=>require('./spelling.cjs').suggestions(words));
  dir=app.getPath('userData');fs.mkdirSync(path.join(dir,'attachments'),{recursive:true});
  const readBooks=()=>{try{return JSON.parse(fs.readFileSync(path.join(dir,'notes.json'),'utf8'));}catch(e){if(e.code==='ENOENT')return [];throw e;}};
  notion=new NotionSync({dir,readBooks,encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw Error('Windows no puede guardar la clave cifrada.');return safeStorage.encryptString(text);},decrypt:buffer=>safeStorage.decryptString(buffer)});

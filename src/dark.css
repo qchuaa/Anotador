@@ -8,6 +8,7 @@
   --text: #e3e3e0;
   --muted: #a3a39e;
 }
+#word-completion { position: sticky; bottom: 12px; margin: 8px 30px; padding: 8px 12px; width: fit-content; background: #303830; color: #d6e5d3; border: 1px solid #52634e; border-radius: 6px; font-size: 13px; pointer-events: none; }
 body { background: var(--surface); color: var(--text); }
 aside { background: var(--sidebar); border-color: #2c2c2c; }
 button { background: var(--raised); border-color: var(--border); transition: background 120ms ease; }

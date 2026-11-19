@@ -61,18 +61,68 @@ function renderImages() {
   }
 }
 const corrections={calculo:'cálculo',fisica:'física',tambien:'también',ademas:'además',funcion:'función',ecuacion:'ecuación',derivacion:'derivación',integracion:'integración',limite:'límite',limites:'límites',matematicas:'matemáticas',teoria:'teoría',energia:'energía',aceleracion:'aceleración',definicion:'definición',numero:'número',numeros:'números',analisis:'análisis',estadistica:'estadística',distribucion:'distribución',probavilidad:'probabilidad',resivir:'recibir',nesesario:'necesario',ejemlo:'ejemplo',porq:'porque'};
-function correct(){const ed=$('.editor');if(!ed)return;
- const currentSelection=getSelection();
- let caretOffset=null;
- if(currentSelection.isCollapsed&&currentSelection.rangeCount&&ed.contains(currentSelection.anchorNode)){
-  const prefix=currentSelection.getRangeAt(0).cloneRange();prefix.selectNodeContents(ed);prefix.setEnd(currentSelection.anchorNode,currentSelection.anchorOffset);caretOffset=prefix.toString().length;
- }
- if(!ed.querySelector('div,p,h2,ul,ol')&&ed.textContent.trim().length>3&&/[A-ZÁÉÍÓÚÑ]/.test(ed.textContent)&&ed.textContent.trim()===ed.textContent.trim().toUpperCase()){
-  const heading=document.createElement('h2');while(ed.firstChild)heading.append(ed.firstChild);ed.append(heading);
- }
-const walker=document.createTreeWalker(ed,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);for(const n of nodes){if(n.parentElement.closest('.correction,.ai-note'))continue;const re=/\b([a-záéíóúñ]+)(?=[\s.,;:!?])/gi;let m;const matches=[];while((m=re.exec(n.data)))if(corrections[m[1].toLowerCase()])matches.push({index:m.index,old:m[1],value:m[1]===m[1].toUpperCase()?corrections[m[1].toLowerCase()].toUpperCase():m[1][0]===m[1][0].toUpperCase()?corrections[m[1].toLowerCase()][0].toUpperCase()+corrections[m[1].toLowerCase()].slice(1):corrections[m[1].toLowerCase()]});for(const m of matches.reverse()){const range=document.createRange();range.setStart(n,m.index);range.setEnd(n,m.index+m.old.length);const span=document.createElement('span');span.className='correction';span.title=`Escribiste «${m.old}» → «${m.value}»`;span.textContent=m.value;range.deleteContents();range.insertNode(span)}}for(const p of ed.querySelectorAll('div,p')){if(p.closest('.ai-note'))continue;const t=p.textContent.trim();if(t.length>3&&/[A-ZÁÉÍÓÚÑ]/.test(t)&&t===t.toUpperCase()&&!p.querySelector('div,p')){const h=document.createElement('h2');h.innerHTML=p.innerHTML;p.replaceWith(h)}}
- if(caretOffset!==null){const walker=document.createTreeWalker(ed,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode()){if(caretOffset<=node.length){const range=document.createRange();range.setStart(node,caretOffset);range.collapse(true);currentSelection.removeAllRanges();currentSelection.addRange(range);break}caretOffset-=node.length}}
- capture()}
+async function correct() {
+  const ed=$('.editor');
+  if(!ed || document.activeElement!==ed || !getSelection().isCollapsed)return;
+  const snapshot=ed.innerHTML;
+  const words=[...ed.textContent.matchAll(/[a-záéíóúüñ]{3,}/gi)].map(match=>match[0].toLowerCase());
+  let suggested={};
+  try { suggested=await api.spelling(words); } catch { /* Known corrections remain available offline. */ }
+  if(!ed.isConnected || ed.innerHTML!==snapshot || document.activeElement!==ed || !getSelection().isCollapsed)return;
+  const current=getSelection();
+  if(!current.rangeCount || !ed.contains(current.anchorNode))return;
+  const marker=document.createElement('span');
+  marker.dataset.caret='true';
+  current.getRangeAt(0).cloneRange().insertNode(marker);
+  const walker=document.createTreeWalker(ed,NodeFilter.SHOW_TEXT);
+  const nodes=[];
+  while(walker.nextNode())nodes.push(walker.currentNode);
+  for(const node of nodes){
+    if(node.parentElement.closest('.correction,.ai-note,code,pre'))continue;
+    const matches=[...node.data.matchAll(/[a-záéíóúüñ]+/gi)];
+    for(const match of matches.reverse()){
+      const original=match[0], end=match.index+original.length;
+      // A word touching the caret is still being typed. Enter completes the previous block.
+      if(end===node.length && (node.nextSibling===marker || node.nextSibling?.nodeType===3 && node.nextSibling.data))continue;
+      const lower=original.toLowerCase();
+      let replacement=corrections[lower] || suggested[lower];
+      if(!replacement || replacement===lower)continue;
+      if(original===original.toUpperCase())replacement=replacement.toUpperCase();
+      else if(original[0]===original[0].toUpperCase())replacement=replacement[0].toUpperCase()+replacement.slice(1);
+      const range=document.createRange();range.setStart(node,match.index);range.setEnd(node,end);
+      const span=document.createElement('span');span.className='correction';span.title='Escribiste «'+original+'» → «'+replacement+'»';span.textContent=replacement;
+      range.deleteContents();range.insertNode(span);
+    }
+  }
+  for(const block of ed.querySelectorAll('div,p')){
+    if(block.closest('.ai-note') || block.querySelector('div,p'))continue;
+    const text=block.textContent.trim();
+    if(text.length>3 && /[A-ZÁÉÍÓÚÑ]/.test(text) && text===text.toUpperCase()){
+      const heading=document.createElement('h2');while(block.firstChild)heading.append(block.firstChild);block.replaceWith(heading);
+    }
+  }
+  const range=document.createRange();range.setStartBefore(marker);range.collapse(true);marker.remove();
+  current.removeAllRanges();current.addRange(range);rememberSelection();capture();showCompletion(ed);
+}
+
+const completionWords=['aceleración','aproximación','características','coeficiente','conclusión','conocimiento','consecuencia','definición','demostración','derivada','distribución','ecuación','estadística','experimento','frecuencia','función','hipótesis','integración','matemáticas','movimiento','probabilidad','procedimiento','propiedades','representación','resultado','sistema','transformación','velocidad'];
+let completion=null;
+function showCompletion(editor){
+  document.querySelector('#word-completion')?.remove();completion=null;
+  const selection=getSelection();
+  if(document.activeElement!==editor || !selection.isCollapsed || selection.anchorNode?.nodeType!==3)return;
+  const node=selection.anchorNode,offset=selection.anchorOffset;
+  const prefix=node.data.slice(0,offset).match(/[a-záéíóúüñ]{4,}$/i)?.[0];
+  if(!prefix || /[a-záéíóúüñ]/i.test(node.data[offset]||''))return;
+  const normalize=text=>text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  let word=completionWords.find(word=>normalize(word).startsWith(normalize(prefix)) && word.length>prefix.length);
+  if(!word)return;
+  if(prefix===prefix.toUpperCase())word=word.toUpperCase();
+  else if(prefix[0]===prefix[0].toUpperCase())word=word[0].toUpperCase()+word.slice(1);
+  completion={node,offset,start:offset-prefix.length,word};
+  const hint=document.createElement('div');hint.id='word-completion';hint.textContent=word+' · Tab para completar';hint.setAttribute('role','status');editor.after(hint);
+}
+
 async function explain() {
   const c=lesson, editor=$('.editor'), btn=$('#explain');
   if(!c || !editor || !btn || btn.disabled)return;
@@ -231,11 +281,21 @@ function prepareEditor() {
   if(!editor.childNodes.length)editor.innerHTML='<p><br></p>';
   $('.paper').onpointerdown=e=>{
     if(e.target!==e.currentTarget)return;
-    clearImageSelection();editor.focus();
+    e.preventDefault();clearImageSelection();editor.focus({preventScroll:true});
     const range=document.createRange();range.selectNodeContents(editor);range.collapse(false);
     const s=getSelection();s.removeAllRanges();s.addRange(range);rememberSelection();
   };
+  editor.addEventListener('keyup',()=>showCompletion(editor));
+  editor.addEventListener('blur',()=>{document.querySelector('#word-completion')?.remove();completion=null;});
   editor.onkeydown=e=>{
+    if(e.key==='Tab' && completion && !e.shiftKey && !e.ctrlKey && !e.altKey){
+      const current=getSelection(), item=completion;
+      if(current.isCollapsed && current.anchorNode===item.node && current.anchorOffset===item.offset){
+        e.preventDefault();const range=document.createRange();range.setStart(item.node,item.start);range.setEnd(item.node,item.offset);current.removeAllRanges();current.addRange(range);document.execCommand('insertText',false,item.word);capture();
+      }
+      document.querySelector('#word-completion')?.remove();completion=null;return;
+    }
+    document.querySelector('#word-completion')?.remove();completion=null;
     if(e.key!=='Enter' || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.isComposing)return;
     const s=getSelection();
     const node=s.anchorNode?.nodeType===3?s.anchorNode.parentElement:s.anchorNode;
