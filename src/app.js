@@ -11,7 +11,7 @@ function home(){document.body.classList.remove('lesson-open');book=lesson=null;n
 function newBook(){modal('Nuevo cuaderno','<label>Materia</label><input id="name" placeholder="Ej. Cálculo" required maxlength="80"><label>Día de cursada</label><select id="day">'+days.map((d,i)=>`<option value="${i}" ${i===1?'selected':''}>${d}</option>`).join('')+'</select>',()=>{if(!$('#name').value.trim())return toast('Escribí el nombre de la materia');books.push({id:crypto.randomUUID(),name:$('#name').value.trim(),day:Number($('#day').value),classes:[]});save();home()})}
 function openBook(b){document.body.classList.remove('lesson-open');numberClasses(b);book=b;lesson=null;nav();$('#crumb').textContent='Cuadernos / '+b.name;$('#content').innerHTML=`<span style="font-size:40px">▤</span><h1>${esc(b.name)}</h1><p class="subtitle">Todos los ${days[b.day].toLowerCase()} · ${b.classes.length} clases</p><div class="row"><h2>Clases</h2><div>${downloadControl('book')} <button id="delete-book">Borrar cuaderno</button> <button id="edit">Editar materia</button> <button class="primary" id="newclass">＋ Nueva clase</button></div></div>${b.classes.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(c=>`<div class="class-row"><button class="open-class" data-id="${c.id}">▱ &nbsp; ${esc(classLabel(c))}</button><small>${date(c.date)}</small><button class="delete-class" data-id="${c.id}" aria-label="Borrar ${esc(classLabel(c))}">Borrar</button></div>`).join('')||'<p class="subtitle">Tu próxima clase empieza con una hoja en blanco.</p>'}`;$('#newclass').onclick=()=>{const d=new Date();d.setDate(d.getDate()+((b.day-d.getDay()+7)%7));if(b.classes.length){const last=b.classes.reduce((a,c)=>a.date>c.date?a:c);const next=new Date(last.date+'T12:00:00');next.setDate(next.getDate()+7);if(next>d)d.setTime(next.getTime())}modal('Nueva clase',`<label>Fecha</label><input type="date" id="date" value="${iso(d)}"><label>Título</label><input id="name" value="Clase ${nextClassNumber(b)}">`,()=>{if(!$('#date').value)return toast('Elegí una fecha');const c={id:crypto.randomUUID(),number:nextClassNumber(b),date:$('#date').value,title:$('#name').value||'Clase',html:'',images:[],files:[]};b.classes.push(c);save();openLesson(c)})};$('#edit').onclick=()=>modal('Editar materia',`<label>Nombre</label><input id="name" value="${esc(b.name)}"><label>Día</label><select id="day">${days.map((d,i)=>`<option value="${i}" ${i===b.day?'selected':''}>${d}</option>`).join('')}</select>`,()=>{b.name=$('#name').value.trim()||b.name;b.day=Number($('#day').value);save();openBook(b)});bindDownload('book',b,null);$('#delete-book').onclick=()=>deleteBook(b);document.querySelectorAll('.delete-class').forEach(x=>x.onclick=()=>deleteLesson(b,b.classes.find(c=>c.id===x.dataset.id)));document.querySelectorAll('.open-class').forEach(x=>x.onclick=()=>openLesson(b.classes.find(c=>c.id===x.dataset.id)))}
 function capture(){if(lesson&&$('.editor')){lesson.html=$('.editor').innerHTML;lesson.layoutWidth=$('.paper').clientWidth;save()}}
-function openLesson(c){document.body.classList.add('lesson-open');clearTimeout(window.correctTimer);lesson=c;selected=null;selection=null;$('#crumb').textContent=book.name+' / '+date(c.date);$('#content').innerHTML=`<div class="lesson-actions"><button id="back">← Clases</button><div class="lesson-action-buttons">${downloadControl('lesson')}<button id="delete-lesson">Borrar clase</button></div></div><input class="title-input" value="${esc(c.title)}"><small>Clase ${c.number} · ${days[new Date(c.date+'T12:00:00').getDay()]} ${date(c.date)}</small><div class="attachments"></div><div class="toolbar" role="toolbar" aria-label="Herramientas de edición"><button data-cmd="bold"><b>N</b></button><button data-cmd="italic"><i>I</i></button><button data-cmd="insertUnorderedList">• Lista</button><button data-cmd="insertOrderedList">1. Lista</button><button id="heading">Subtítulo</button><button data-cmd="undo">↶</button><button data-cmd="redo">↷</button><button id="attach">＋ PDF / PPT</button><button id="explain" title="Explicá el texto o la captura seleccionada con Ctrl + E" aria-keyshortcuts="Control+E"><span>✧ Explicar</span><kbd>Ctrl + E</kbd></button><button id="remove">Quitar captura</button></div><div class="paper"><div class="editor" contenteditable="true" spellcheck="true"></div></div><div class="hint">Pegá capturas con Ctrl + V. Arrastralas y ajustá su tamaño desde la esquina inferior derecha. Ctrl + E: explicar texto o captura seleccionada. Backspace: borrar la captura seleccionada.</div>`;$('.editor').innerHTML=c.html;prepareEditor();$('#back').onclick=()=>openBook(book);$('#delete-lesson').onclick=()=>deleteLesson(book,c);$('.title-input').oninput=e=>{c.title=e.target.value;save()};document.querySelectorAll('[data-cmd]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{document.execCommand(b.dataset.cmd);capture()}});$('#heading').onmousedown=e=>e.preventDefault();$('#heading').onclick=()=>{document.execCommand('formatBlock',false,'h2');capture()};$('.editor').oninput=()=>{normalizeEditor();capture();clearTimeout(window.correctTimer);window.correctTimer=setTimeout(correct,650)};$('.editor').onkeyup=rememberSelection;$('.editor').onmouseup=rememberSelection;
+function openLesson(c){document.body.classList.add('lesson-open');clearTimeout(window.correctTimer);lesson=c;selected=null;selection=null;$('#crumb').textContent=book.name+' / '+date(c.date);$('#content').innerHTML=`<div class="lesson-actions"><button id="back">← Clases</button><div class="lesson-action-buttons">${downloadControl('lesson')}<button id="delete-lesson">Borrar clase</button></div></div><input class="title-input" value="${esc(c.title)}"><small>Clase ${c.number} · ${days[new Date(c.date+'T12:00:00').getDay()]} ${date(c.date)}</small><div class="attachments"></div><div class="toolbar" role="toolbar" aria-label="Herramientas de edición"><button data-cmd="bold"><b>N</b></button><button data-cmd="italic"><i>I</i></button><button data-cmd="insertUnorderedList">• Lista</button><button data-cmd="insertOrderedList">1. Lista</button><button id="heading">Subtítulo</button><button data-cmd="undo">↶</button><button data-cmd="redo">↷</button><button id="attach">＋ PDF / PPT</button><button id="explain" title="Explicá el texto o la captura seleccionada con Ctrl + E" aria-keyshortcuts="Control+E"><span>✧ Explicar</span><kbd>Ctrl + E</kbd></button><button id="remove">Quitar captura</button></div><div class="paper"><div class="editor" contenteditable="true" spellcheck="true"></div></div><div class="hint">Pegá capturas con Ctrl + V. Arrastralas y ajustá su tamaño desde la esquina inferior derecha. Ctrl + E: explicar texto o captura seleccionada. Backspace: borrar la captura seleccionada.</div>`;$('.editor').innerHTML=c.html;prepareEditor();$('#back').onclick=()=>openBook(book);$('#delete-lesson').onclick=()=>deleteLesson(book,c);$('.title-input').oninput=e=>{c.title=e.target.value;save()};document.querySelectorAll('[data-cmd]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{if(b.dataset.cmd==='undo'||b.dataset.cmd==='redo'){editorUndo(b.dataset.cmd==='redo');}else{document.execCommand(b.dataset.cmd);}capture()}});$('#heading').onmousedown=e=>e.preventDefault();$('#heading').onclick=()=>{document.execCommand('formatBlock',false,'h2');capture()};$('.editor').oninput=()=>{cleanCorrectionMarks($('.editor'));hideCorrectionPopup();normalizeEditor();capture();clearTimeout(window.correctTimer);window.correctTimer=setTimeout(correct,650)};$('.editor').onkeyup=rememberSelection;$('.editor').onmouseup=rememberSelection;
  $('.editor').onpaste=e=>{const item=[...e.clipboardData.items].find(i=>i.type.startsWith('image/'));if(item){e.preventDefault();const r=new FileReader();r.onload=()=>{c.images.push({id:crypto.randomUUID(),src:r.result,x:40,y:80,w:350,h:220});if(lesson===c)renderImages();save()};r.readAsDataURL(item.getAsFile())}else{e.preventDefault();document.execCommand('insertText',false,e.clipboardData.getData('text/plain'));capture()}};
  $('#attach').onclick=async()=>{try{c.files.push(...await api.attach());files();save()}catch(e){toast(e.message)}};$('#remove').onclick=removeSelectedImage;$('#explain').onmousedown=e=>e.preventDefault();$('#explain').onclick=explain;bindDownload('lesson',book,c);files();renderImages()}
 function files(){$('.attachments').innerHTML=lesson.files.map(f=>`<button data-file="${f.id}">▱ ${esc(f.name)}</button>`).join('');document.querySelectorAll('[data-file]').forEach(b=>b.onclick=async()=>{const error=await api.open(b.dataset.file);if(error)toast(error)})}
@@ -64,6 +64,7 @@ const corrections={calculo:'cálculo',fisica:'física',tambien:'también',ademas
 async function correct() {
   const ed=$('.editor');
   if(!ed || document.activeElement!==ed || !getSelection().isCollapsed)return;
+  cleanCorrectionMarks(ed);
   const snapshot=ed.innerHTML;
   const words=[...ed.textContent.matchAll(/[a-záéíóúüñ]{3,}/gi)].map(match=>match[0].toLowerCase());
   let suggested={};
@@ -78,7 +79,7 @@ async function correct() {
   const nodes=[];
   while(walker.nextNode())nodes.push(walker.currentNode);
   for(const node of nodes){
-    if(node.parentElement.closest('.correction,.ai-note,code,pre'))continue;
+    if(node.parentElement.closest('.correction,[data-keep-original],.ai-note,code,pre'))continue;
     const matches=[...node.data.matchAll(/[a-záéíóúüñ]+/gi)];
     for(const match of matches.reverse()){
       const original=match[0], end=match.index+original.length;
@@ -90,7 +91,7 @@ async function correct() {
       if(original===original.toUpperCase())replacement=replacement.toUpperCase();
       else if(original[0]===original[0].toUpperCase())replacement=replacement[0].toUpperCase()+replacement.slice(1);
       const range=document.createRange();range.setStart(node,match.index);range.setEnd(node,end);
-      const span=document.createElement('span');span.className='correction';span.title='Escribiste «'+original+'» → «'+replacement+'»';span.textContent=replacement;
+      const span=document.createElement('span');span.className='correction';span.dataset.original=original;span.dataset.corrected=replacement;span.title='Escribiste «'+original+'» → «'+replacement+'»';span.textContent=replacement;
       range.deleteContents();range.insertNode(span);
     }
   }
@@ -120,7 +121,7 @@ function showCompletion(editor){
   if(prefix===prefix.toUpperCase())word=word.toUpperCase();
   else if(prefix[0]===prefix[0].toUpperCase())word=word[0].toUpperCase()+word.slice(1);
   completion={node,offset,start:offset-prefix.length,word};
-  const hint=document.createElement('div');hint.id='word-completion';hint.textContent=word+' · Tab para completar';hint.setAttribute('role','status');editor.after(hint);
+  const hint=document.createElement('div');hint.id='word-completion';hint.textContent=word+' · → para completar';hint.setAttribute('role','status');editor.after(hint);
 }
 
 async function explain() {
@@ -277,6 +278,7 @@ function prepareEditor() {
     note.style.removeProperty('margin-top');
     if(!note.textContent.trim())note.remove();
   });
+  cleanCorrectionMarks(editor);
   normalizeEditor();
   if(!editor.childNodes.length)editor.innerHTML='<p><br></p>';
   $('.paper').onpointerdown=e=>{
@@ -287,8 +289,10 @@ function prepareEditor() {
   };
   editor.addEventListener('keyup',()=>showCompletion(editor));
   editor.addEventListener('blur',()=>{document.querySelector('#word-completion')?.remove();completion=null;});
+  installWordHistory(editor);
   editor.onkeydown=e=>{
-    if(e.key==='Tab' && completion && !e.shiftKey && !e.ctrlKey && !e.altKey){
+    if(e.key==='Tab' && !e.ctrlKey && !e.altKey && !e.metaKey){e.preventDefault();document.execCommand('insertText',false,'\t');capture();return;}
+    if(e.key==='ArrowRight' && completion && !e.shiftKey && !e.ctrlKey && !e.altKey){
       const current=getSelection(), item=completion;
       if(current.isCollapsed && current.anchorNode===item.node && current.anchorOffset===item.offset){
         e.preventDefault();const range=document.createRange();range.setStart(item.node,item.start);range.setEnd(item.node,item.offset);current.removeAllRanges();current.addRange(range);document.execCommand('insertText',false,item.word);capture();
@@ -407,3 +411,41 @@ function bindDownload(scope,notebook,current) {
   control.addEventListener('focusout',event=>{if(!control.contains(event.relatedTarget))closeDownload(control);});
 }
 document.addEventListener('click',event=>{for(const control of document.querySelectorAll('.download-control'))if(!control.contains(event.target))closeDownload(control);});
+
+let correctionPopup;
+function hideCorrectionPopup(){correctionPopup?.remove();correctionPopup=null;}
+document.addEventListener('pointerover',event=>{
+  const word=event.target.closest?.('.editor .correction');
+  if(!word)return;
+  cleanCorrectionMarks(word.closest('.editor'));
+  if(!word.classList.contains('correction') || correctionPopup?.word===word)return;
+  const original=word.dataset.original || word.title.match(/^Escribiste «(.*?)» →/s)?.[1];
+  if(!original)return;
+  hideCorrectionPopup();
+  const popup=document.createElement('div');popup.id='correction-popup';popup.word=word;
+  const label=document.createElement('div');label.textContent='«'+original+'» → «'+word.textContent+'»';
+  const button=document.createElement('button');button.type='button';button.textContent='Volver a «'+original+'»';
+  button.onmousedown=e=>e.preventDefault();
+  button.onclick=()=>{
+    if(!word.isConnected){hideCorrectionPopup();return;}
+    word.textContent=original;word.classList.remove('correction');word.dataset.keepOriginal=original;word.removeAttribute('title');word.removeAttribute('data-original');
+    hideCorrectionPopup();capture();
+  };
+  popup.append(label,button);document.body.append(popup);correctionPopup=popup;
+  const bounds=word.getBoundingClientRect();popup.style.left=Math.max(8,Math.min(bounds.left,innerWidth-popup.offsetWidth-8))+'px';popup.style.top=Math.max(8,Math.min(bounds.bottom,innerHeight-popup.offsetHeight-8))+'px';
+});
+document.addEventListener('pointerdown',event=>{if(!event.target.closest('#correction-popup,.correction'))hideCorrectionPopup();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'||event.target.closest('.editor'))hideCorrectionPopup();});
+document.addEventListener('scroll',hideCorrectionPopup,true);
+
+function cleanCorrectionMarks(editor) {
+  if(!editor)return;
+  for(const span of editor.querySelectorAll('.correction,[data-keep-original]')){
+    const previous=span.title.match(/^Escribiste «(.*?)» → «(.*?)»$/s);
+    const expected=span.classList.contains('correction') ? span.dataset.corrected || previous?.[2] : span.dataset.keepOriginal==='true' ? span.textContent : span.dataset.keepOriginal;
+    if(expected && /^[a-záéíóúüñ]+$/i.test(expected) && span.textContent===expected)continue;
+    // Clear stale metadata without changing text nodes, selection or formatting.
+    span.classList.remove('correction');
+    span.removeAttribute('title');span.removeAttribute('data-original');span.removeAttribute('data-corrected');span.removeAttribute('data-keep-original');
+  }
+}

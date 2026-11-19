@@ -8,6 +8,7 @@
   --text: #e3e3e0;
   --muted: #a3a39e;
 }
+.editor { white-space: pre-wrap; tab-size: 4; }
 #word-completion { position: sticky; bottom: 12px; margin: 8px 30px; padding: 8px 12px; width: fit-content; background: #303830; color: #d6e5d3; border: 1px solid #52634e; border-radius: 6px; font-size: 13px; pointer-events: none; }
 body { background: var(--surface); color: var(--text); }
 aside { background: var(--sidebar); border-color: #2c2c2c; }
@@ -132,3 +133,4 @@ nav { max-height: calc(100vh - 420px); }
 .download-options:not([hidden]) { display: flex; flex-direction: column; gap: 4px; }
 .download-options button { text-align: left; border: 0; background: transparent; white-space: nowrap; }
 .download-options button:hover, .download-options button:focus-visible { background: #ffffff12; }
+#correction-popup { position:fixed; z-index:100; max-width:360px; padding:12px; background:#292929; color:#eee; border:1px solid #555; border-radius:8px; box-shadow:0 6px 24px #0008; font-size:13px; } #correction-popup button { margin-top:9px; }
