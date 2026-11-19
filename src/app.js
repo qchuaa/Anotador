@@ -11,10 +11,19 @@ function home(){document.body.classList.remove('lesson-open');book=lesson=null;n
 function newBook(){modal('Nuevo cuaderno','<label>Materia</label><input id="name" placeholder="Ej. Cálculo" required maxlength="80"><label>Día de cursada</label><select id="day">'+days.map((d,i)=>`<option value="${i}" ${i===1?'selected':''}>${d}</option>`).join('')+'</select>',()=>{if(!$('#name').value.trim())return toast('Escribí el nombre de la materia');books.push({id:crypto.randomUUID(),name:$('#name').value.trim(),day:Number($('#day').value),classes:[]});save();home()})}
 function openBook(b){document.body.classList.remove('lesson-open');numberClasses(b);book=b;lesson=null;nav();$('#crumb').textContent='Cuadernos / '+b.name;$('#content').innerHTML=`<span style="font-size:40px">▤</span><h1>${esc(b.name)}</h1><p class="subtitle">Todos los ${days[b.day].toLowerCase()} · ${b.classes.length} clases</p><div class="row"><h2>Clases</h2><div>${downloadControl('book')} <button id="delete-book">Borrar cuaderno</button> <button id="edit">Editar materia</button> <button class="primary" id="newclass">＋ Nueva clase</button></div></div>${b.classes.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(c=>`<div class="class-row"><button class="open-class" data-id="${c.id}">▱ &nbsp; ${esc(classLabel(c))}</button><small>${date(c.date)}</small><button class="delete-class" data-id="${c.id}" aria-label="Borrar ${esc(classLabel(c))}">Borrar</button></div>`).join('')||'<p class="subtitle">Tu próxima clase empieza con una hoja en blanco.</p>'}`;$('#newclass').onclick=()=>{const d=new Date();d.setDate(d.getDate()+((b.day-d.getDay()+7)%7));if(b.classes.length){const last=b.classes.reduce((a,c)=>a.date>c.date?a:c);const next=new Date(last.date+'T12:00:00');next.setDate(next.getDate()+7);if(next>d)d.setTime(next.getTime())}modal('Nueva clase',`<label>Fecha</label><input type="date" id="date" value="${iso(d)}"><label>Título</label><input id="name" value="Clase ${nextClassNumber(b)}">`,()=>{if(!$('#date').value)return toast('Elegí una fecha');const c={id:crypto.randomUUID(),number:nextClassNumber(b),date:$('#date').value,title:$('#name').value||'Clase',html:'',images:[],files:[]};b.classes.push(c);save();openLesson(c)})};$('#edit').onclick=()=>modal('Editar materia',`<label>Nombre</label><input id="name" value="${esc(b.name)}"><label>Día</label><select id="day">${days.map((d,i)=>`<option value="${i}" ${i===b.day?'selected':''}>${d}</option>`).join('')}</select>`,()=>{b.name=$('#name').value.trim()||b.name;b.day=Number($('#day').value);save();openBook(b)});bindDownload('book',b,null);$('#delete-book').onclick=()=>deleteBook(b);document.querySelectorAll('.delete-class').forEach(x=>x.onclick=()=>deleteLesson(b,b.classes.find(c=>c.id===x.dataset.id)));document.querySelectorAll('.open-class').forEach(x=>x.onclick=()=>openLesson(b.classes.find(c=>c.id===x.dataset.id)))}
 function capture(){if(lesson&&$('.editor')){lesson.html=$('.editor').innerHTML;lesson.layoutWidth=$('.paper').clientWidth;save()}}
-function openLesson(c){document.body.classList.add('lesson-open');clearTimeout(window.correctTimer);lesson=c;selected=null;selection=null;$('#crumb').textContent=book.name+' / '+date(c.date);$('#content').innerHTML=`<div class="lesson-actions"><button id="back">← Clases</button><div class="lesson-action-buttons">${downloadControl('lesson')}<button id="delete-lesson">Borrar clase</button></div></div><input class="title-input" value="${esc(c.title)}"><small>Clase ${c.number} · ${days[new Date(c.date+'T12:00:00').getDay()]} ${date(c.date)}</small><div class="attachments"></div><div class="toolbar" role="toolbar" aria-label="Herramientas de edición"><button data-cmd="bold"><b>N</b></button><button data-cmd="italic"><i>I</i></button><button data-cmd="insertUnorderedList">• Lista</button><button data-cmd="insertOrderedList">1. Lista</button><button id="heading">Subtítulo</button><button data-cmd="undo">↶</button><button data-cmd="redo">↷</button><button id="attach">＋ PDF / PPT</button><button id="explain" title="Explicá el texto o la captura seleccionada con Ctrl + E" aria-keyshortcuts="Control+E"><span>✧ Explicar</span><kbd>Ctrl + E</kbd></button><button id="remove">Quitar captura</button></div><div class="paper"><div class="editor" contenteditable="true" spellcheck="true"></div></div><div class="hint">Pegá capturas con Ctrl + V. Arrastralas y ajustá su tamaño desde la esquina inferior derecha. Ctrl + E: explicar texto o captura seleccionada. Backspace: borrar la captura seleccionada.</div>`;$('.editor').innerHTML=c.html;prepareEditor();$('#back').onclick=()=>openBook(book);$('#delete-lesson').onclick=()=>deleteLesson(book,c);$('.title-input').oninput=e=>{c.title=e.target.value;save()};document.querySelectorAll('[data-cmd]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{if(b.dataset.cmd==='undo'||b.dataset.cmd==='redo'){editorUndo(b.dataset.cmd==='redo');}else{document.execCommand(b.dataset.cmd);}capture()}});$('#heading').onmousedown=e=>e.preventDefault();$('#heading').onclick=()=>{document.execCommand('formatBlock',false,'h2');capture()};$('.editor').oninput=()=>{cleanCorrectionMarks($('.editor'));hideCorrectionPopup();normalizeEditor();capture();clearTimeout(window.correctTimer);window.correctTimer=setTimeout(correct,650)};$('.editor').onkeyup=rememberSelection;$('.editor').onmouseup=rememberSelection;
+function openLesson(c){document.body.classList.add('lesson-open');clearTimeout(window.correctTimer);lesson=c;selected=null;selection=null;$('#crumb').textContent=book.name+' / '+date(c.date);$('#content').innerHTML=`<div class="lesson-actions"><button id="back">← Clases</button><div class="lesson-action-buttons"><button id="import-word" title="Agregar un Word editable al final de esta clase">↑ Importar Word</button>${downloadControl('lesson')}<button id="delete-lesson">Borrar clase</button></div></div><input class="title-input" value="${esc(c.title)}"><small>Clase ${c.number} · ${days[new Date(c.date+'T12:00:00').getDay()]} ${date(c.date)}</small><div class="attachments"></div><div class="toolbar" role="toolbar" aria-label="Herramientas de edición"><button data-cmd="bold"><b>N</b></button><button data-cmd="italic"><i>I</i></button><button data-cmd="insertUnorderedList">• Lista</button><button data-cmd="insertOrderedList">1. Lista</button><button id="heading">Subtítulo</button><button data-cmd="undo">↶</button><button data-cmd="redo">↷</button><button id="attach">＋ PDF / PPT</button><button id="explain" title="Explicá el texto o la captura seleccionada con Ctrl + E" aria-keyshortcuts="Control+E"><span>✧ Explicar</span><kbd>Ctrl + E</kbd></button><button id="remove">Quitar captura</button></div><div class="paper"><div class="editor" contenteditable="true" spellcheck="true"></div></div><div class="hint">Arrastrá PDF, PowerPoint o Word sobre la hoja para cargarlos. Pegá capturas con Ctrl + V. Arrastralas y ajustá su tamaño desde la esquina inferior derecha. Ctrl + E: explicar texto o captura seleccionada. Backspace: borrar la captura seleccionada.</div>`;$('.editor').innerHTML=c.html;prepareEditor();$('#back').onclick=()=>openBook(book);$('#delete-lesson').onclick=()=>deleteLesson(book,c);$('.title-input').oninput=e=>{c.title=e.target.value;save()};document.querySelectorAll('[data-cmd]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{if(b.dataset.cmd==='undo'||b.dataset.cmd==='redo'){editorUndo(b.dataset.cmd==='redo');}else{document.execCommand(b.dataset.cmd);}capture()}});$('#heading').onmousedown=e=>e.preventDefault();$('#heading').onclick=()=>{document.execCommand('formatBlock',false,'h2');capture()};$('.editor').oninput=()=>{cleanCorrectionMarks($('.editor'));hideCorrectionPopup();normalizeEditor();capture();clearTimeout(window.correctTimer);window.correctTimer=setTimeout(correct,650)};$('.editor').onkeyup=rememberSelection;$('.editor').onmouseup=rememberSelection;
  $('.editor').onpaste=e=>{const item=[...e.clipboardData.items].find(i=>i.type.startsWith('image/'));if(item){e.preventDefault();const r=new FileReader();r.onload=()=>{c.images.push({id:crypto.randomUUID(),src:r.result,x:40,y:80,w:350,h:220});if(lesson===c)renderImages();save()};r.readAsDataURL(item.getAsFile())}else{e.preventDefault();document.execCommand('insertText',false,e.clipboardData.getData('text/plain'));capture()}};
- $('#attach').onclick=async()=>{try{c.files.push(...await api.attach());files();save()}catch(e){toast(e.message)}};$('#remove').onclick=removeSelectedImage;$('#explain').onmousedown=e=>e.preventDefault();$('#explain').onclick=explain;bindDownload('lesson',book,c);files();renderImages()}
-function files(){$('.attachments').innerHTML=lesson.files.map(f=>`<button data-file="${f.id}">▱ ${esc(f.name)}</button>`).join('');document.querySelectorAll('[data-file]').forEach(b=>b.onclick=async()=>{const error=await api.open(b.dataset.file);if(error)toast(error)})}
+ $('#attach').onclick=async()=>{try{c.files.push(...await api.attach());files();save()}catch(e){toast(e.message)}};$('#remove').onclick=removeSelectedImage;$('#explain').onmousedown=e=>e.preventDefault();$('#explain').onclick=explain;bindDownload('lesson',book,c);$('#import-word').onclick=()=>importWord(c);files();renderImages()}
+function files(){
+ const current=lesson;
+ $('.attachments').innerHTML=current.files.map(f=>`<span class="attachment-chip"><button data-file="${esc(f.id)}" title="${esc(f.name)}">▱ ${esc(f.name)}</button><button data-remove-file="${esc(f.id)}" title="Quitar material" aria-label="Quitar ${esc(f.name)}">×</button></span>`).join('');
+ document.querySelectorAll('[data-file]').forEach(b=>b.onclick=async()=>{try{const error=await api.open(b.dataset.file);if(error)toast(error);}catch(e){toast(e.message);}});
+ document.querySelectorAll('[data-remove-file]').forEach(b=>b.onclick=()=>{
+  const file=current.files.find(f=>f.id===b.dataset.removeFile);if(!file)return;
+  modal('Quitar material',`<p>¿Quitar <b>${esc(file.name)}</b> de esta clase?</p><p>El texto de la clase y el archivo original en tu PC se conservan.</p>`,()=>{current.files=current.files.filter(f=>f.id!==file.id);if(lesson===current)files();save();},'Quitar');
+ });
+}
+
 function renderImages() {
   const current = lesson, paper = $('.paper');
   if (!current || !paper) return;
@@ -79,7 +88,7 @@ async function correct() {
   const nodes=[];
   while(walker.nextNode())nodes.push(walker.currentNode);
   for(const node of nodes){
-    if(node.parentElement.closest('.correction,[data-keep-original],.ai-note,code,pre'))continue;
+    if(node.parentElement.closest('.correction,[data-keep-original],.ai-note,.docx-import,code,pre'))continue;
     const matches=[...node.data.matchAll(/[a-záéíóúüñ]+/gi)];
     for(const match of matches.reverse()){
       const original=match[0], end=match.index+original.length;
@@ -96,7 +105,7 @@ async function correct() {
     }
   }
   for(const block of ed.querySelectorAll('div,p')){
-    if(block.closest('.ai-note') || block.querySelector('div,p'))continue;
+    if(block.closest('.ai-note,.docx-import') || block.querySelector('div,p'))continue;
     const text=block.textContent.trim();
     if(text.length>3 && /[A-ZÁÉÍÓÚÑ]/.test(text) && text===text.toUpperCase()){
       const heading=document.createElement('h2');while(block.firstChild)heading.append(block.firstChild);block.replaceWith(heading);
@@ -279,8 +288,9 @@ function prepareEditor() {
     if(!note.textContent.trim())note.remove();
   });
   cleanCorrectionMarks(editor);
-  normalizeEditor();
+  normalizeEditor();adaptImportedInk(editor);
   if(!editor.childNodes.length)editor.innerHTML='<p><br></p>';
+  setupFileDrop($('.paper'));
   $('.paper').onpointerdown=e=>{
     if(e.target!==e.currentTarget)return;
     e.preventDefault();clearImageSelection();editor.focus({preventScroll:true});
@@ -411,6 +421,74 @@ function bindDownload(scope,notebook,current) {
   control.addEventListener('focusout',event=>{if(!control.contains(event.relatedTarget))closeDownload(control);});
 }
 document.addEventListener('click',event=>{for(const control of document.querySelectorAll('.download-control'))if(!control.contains(event.target))closeDownload(control);});
+
+let importingWord=false;
+async function importWord(current){
+  if(importingWord||receivingFiles)return;
+  capture();clearTimeout(window.correctTimer);
+  const button=$('#import-word');importingWord=true;button.disabled=true;button.textContent='Importando…';
+  try{
+    const result=await api.importDocx();if(result.canceled)return;
+    // The captured class stays the target even if the user navigates while conversion runs.
+    if(!books.some(b=>b.classes.includes(current))){toast('La clase ya no existe. No se importó el documento.');return;}
+    await appendImportedWord(current,result);
+    toast('Word importado. Podés editarlo y seguir escribiendo.');
+  }catch(error){toast('No se pudo importar: '+error.message);}finally{importingWord=false;if(button.isConnected){button.disabled=false;button.textContent='↑ Importar Word';}}
+}
+async function appendImportedWord(current,result){
+    const container=document.createElement('div');container.className='docx-import';container.innerHTML=result.html;
+    current.html+=(container.outerHTML+'<p><br></p>');current.files.push(result.file);
+    if(lesson===current){
+      const ed=$('.editor');ed.innerHTML=current.html;normalizeEditor();adaptImportedInk(ed);files();clearImageSelection();
+      ed.focus({preventScroll:true});const r=document.createRange();r.setStart(ed.lastElementChild,0);r.collapse(true);const selection=getSelection();selection.removeAllRanges();selection.addRange(r);rememberSelection();
+    }
+    await save();
+    if(result.warnings.length)modal('Documento importado', '<p>Se agregó al final de la clase. El Word original está en los adjuntos.</p><ul>'+result.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul>',()=>{},'Entendido');
+
+}
+
+function adaptImportedInk(editor){
+ const rgb=value=>value.match(/[\d.]+/g)?.slice(0,3).map(Number);
+ const luminance=c=>c[0]*.2126+c[1]*.7152+c[2]*.0722;
+ const elements=[...editor.querySelectorAll('.docx-import [style]')];
+ for(const el of elements){
+  el.classList.remove('word-dark-ink','word-paper-fill','word-highlight-ink');
+  const bg=rgb(el.style.backgroundColor);
+  if(bg&&bg.every(v=>v>=210)&&Math.max(...bg)-Math.min(...bg)<20)el.classList.add('word-paper-fill');
+  else if(bg&&luminance(bg)>160)el.classList.add('word-highlight-ink');
+ }
+ for(const el of elements){
+  if(!el.style.color)continue;
+  const ink=rgb(el.style.color);
+  if(ink&&luminance(ink)<120&&!el.closest('.word-highlight-ink'))el.classList.add('word-dark-ink');
+ }
+}
+
+let receivingFiles=false;
+function setupFileDrop(paper){
+ const isFile=e=>[...(e.dataTransfer?.types||[])].includes('Files');
+ paper.ondragover=e=>{if(!isFile(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy';paper.classList.add('file-drag-over');};
+ paper.ondragleave=e=>{if(!paper.contains(e.relatedTarget))paper.classList.remove('file-drag-over');};
+ paper.ondrop=async e=>{
+  if(!isFile(e))return;e.preventDefault();e.stopPropagation();paper.classList.remove('file-drag-over');
+  if(receivingFiles||importingWord){toast('Esperá a que termine la importación.');return;}
+  const current=lesson;if(!current)return;const dropped=[...e.dataTransfer.files];if(!dropped.length)return;
+  receivingFiles=true;capture();clearTimeout(window.correctTimer);toast('Cargando archivos…');
+  try{
+   const results=await api.dropFiles(dropped),errors=[];
+   for(const result of results){
+    if(result.error){errors.push(result.error);continue;}
+    if(!books.some(b=>b.classes.includes(current))){errors.push('La clase ya no existe.');break;}
+    if(result.html)await appendImportedWord(current,result);
+    else {current.files.push(result.file);if(lesson===current)files();await save();const error=await api.open(result.file.id);if(error)errors.push('Se adjuntó '+result.file.name+', pero no se pudo abrir: '+error);}
+   }
+   if(errors.length)modal('Resultado de la carga','<p>Los archivos válidos ya se agregaron.</p><ul>'+errors.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>',()=>{},'Entendido');
+   else toast('Archivos cargados.');
+  }catch(error){toast('No se pudieron cargar los archivos: '+error.message);}finally{receivingFiles=false;}
+ };
+}
+document.addEventListener('dragover',e=>{if([...(e.dataTransfer?.types||[])].includes('Files'))e.preventDefault();});
+document.addEventListener('drop',e=>{if([...(e.dataTransfer?.types||[])].includes('Files'))e.preventDefault();});
 
 let correctionPopup;
 function hideCorrectionPopup(){correctionPopup?.remove();correctionPopup=null;}
