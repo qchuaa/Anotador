@@ -1,2 +1,2 @@
-const {contextBridge,ipcRenderer}=require('electron');
-contextBridge.exposeInMainWorld('api',Object.fromEntries(['spelling','load','save','attach','open','key','explain','exportPDF','notionStatus','notionConfigure','notionAutomatic','notionDisconnect','notionSync','notionOpen'].map(k=>[k,(arg)=>ipcRenderer.invoke(k,arg)])));
+const {contextBridge,ipcRenderer,webUtils}=require('electron');
+contextBridge.exposeInMainWorld('api',{dropFiles:files=>ipcRenderer.invoke('dropFiles',files.map(file=>webUtils.getPathForFile(file))),...Object.fromEntries(['importDocx','spelling','load','save','attach','open','key','explain','exportPDF','notionPull','notionStatus','notionConfigure','notionAutomatic','notionDisconnect','notionSync','notionOpen'].map(k=>[k,(arg)=>ipcRenderer.invoke(k,arg)]))});

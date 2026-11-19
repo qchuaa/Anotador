@@ -1,4 +1,4 @@
-const allowed=new Set(['P','DIV','SPAN','BR','B','STRONG','I','EM','U','S','UL','OL','LI','H1','H2','H3','H4','BLOCKQUOTE','SUB','SUP','PRE','CODE']);
+const allowed=new Set(['P','DIV','SPAN','BR','B','STRONG','I','EM','U','S','UL','OL','LI','H1','H2','H3','H4','BLOCKQUOTE','SUB','SUP','PRE','CODE','TABLE','TBODY','THEAD','TFOOT','TR','TD','TH','IMG','A','H5','H6']);
 function cleanContent(html) {
   const source=new DOMParser().parseFromString(String(html||''),'text/html');
   const out=document.createElement('div');
@@ -7,12 +7,23 @@ function cleanContent(html) {
     if(node.nodeType!==1)return;
     if(!allowed.has(node.tagName))return;
     const el=document.createElement(node.tagName.toLowerCase());
-    for(const name of ['ai-note','image-explanation'])if(node.classList.contains(name))el.classList.add(name);
+    for(const name of ['ai-note','image-explanation','docx-import','notion-import'])if(node.classList.contains(name))el.classList.add(name);
     if(el.classList.contains('image-explanation')){
       const gap=parseFloat(node.style.paddingTop);if(Number.isFinite(gap))el.style.setProperty('--source-gap',Math.max(0,gap)+'px');
     }
     if(['left','right','center','justify'].includes(node.style.textAlign))el.style.textAlign=node.style.textAlign;
     if(node.tagName==='OL' && /^\d+$/.test(node.getAttribute('start')||''))el.start=Number(node.getAttribute('start'));
+    if(node.closest('.docx-import,.notion-import')){
+      for(const name of ['font-weight','font-style','font-size','font-family','text-decoration','color','background-color','text-align','text-indent','margin-left','margin-right','margin-top','margin-bottom','line-height','vertical-align','border','border-collapse','padding','width','max-width','height','table-layout','list-style-type']){
+        const value=node.style.getPropertyValue(name);if(value&&!/url\s*\(|expression|var\s*\(/i.test(value))el.style.setProperty(name,value);
+      }
+      for(const name of ['colspan','rowspan','start'])if(/^\d+$/.test(node.getAttribute(name)||''))el.setAttribute(name,node.getAttribute(name));
+    }
+    if(node.tagName==='IMG'){
+      if(!/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=\r\n]+$/i.test(node.getAttribute('src')||''))return;
+      el.src=node.getAttribute('src');el.alt=node.getAttribute('alt')||'Imagen';
+    }
+    if(node.tagName==='A'&&/^https?:\/\//i.test(node.getAttribute('href')||''))el.href=node.getAttribute('href');
     for(const child of node.childNodes)copy(child,el);
     parent.append(el);
   };
@@ -76,10 +87,17 @@ window.wordExportHTML=()=>{
     const clone=section.cloneNode(true);
     for(const image of clone.querySelectorAll('img')){
       const original=[...section.querySelectorAll('img')][[...clone.querySelectorAll('img')].indexOf(image)];
-      const width=Math.min(560,parseFloat(image.style.maxWidth)||350,760*original.naturalWidth/original.naturalHeight);
+      const width=Math.min(560,parseFloat(image.style.width)||parseFloat(image.style.maxWidth)||350,760*original.naturalWidth/original.naturalHeight);
       const canvas=document.createElement('canvas');canvas.width=original.naturalWidth;canvas.height=original.naturalHeight;canvas.getContext('2d').drawImage(original,0,0);image.src=canvas.toDataURL('image/png');
       image.setAttribute('width',String(width));image.setAttribute('height',String(Math.round(width*original.naturalHeight/original.naturalWidth)));
       image.style.cssText=`width:${width}px;height:${image.getAttribute('height')}px`;
+    }
+    // The Word converter ignores pictures nested inside inline formatting spans.
+    for(const image of clone.querySelectorAll('img'))while(/^(SPAN|B|STRONG|I|EM|U|A)$/.test(image.parentElement?.tagName||'')){
+      const parent=image.parentElement,before=parent.cloneNode(false),after=parent.cloneNode(false);
+      while(parent.firstChild!==image)before.append(parent.firstChild);
+      while(image.nextSibling)after.append(image.nextSibling);
+      parent.replaceWith(before,image,after);
     }
     for(const note of clone.querySelectorAll('.ai-note'))note.style.cssText='background-color:#e6eee6;padding:10px';
     for(const wrapper of clone.querySelectorAll('.image-explanation'))wrapper.removeAttribute('style');

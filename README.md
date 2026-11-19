@@ -62,3 +62,31 @@ Después de compilar, comprobá el paquete antes de abrirlo: `node scripts/check
 ### Word y Google Docs
 
 La opción **Descargar → Word / Docs (.docx)** de una clase o un cuaderno descarga un archivo `.docx` editable para Word o para importar en Google Docs. Incluye títulos, fechas, texto con formato, listas, explicaciones y capturas; los cuadernos se ordenan por fecha y cada clase comienza en una página nueva. Los adjuntos se enumeran como referencias. Las imágenes se acomodan dentro de la página sin conservar la superposición libre del editor. La descarga es local y no crea automáticamente un documento en Google Drive.
+
+### Importar apuntes de Word
+
+Dentro de una clase, **↑ Importar Word** abre un `.docx` y agrega su contenido editable al final sin reemplazar los apuntes existentes. Se conserva una copia del original en los adjuntos. Word antiguo `.doc` y documentos protegidos deben guardarse primero como `.docx` sin contraseña.
+
+La importación conserva títulos, negritas, cursivas, subrayado, tamaños y colores, alineación, listas anidadas, tablas con celdas combinadas e imágenes PNG/JPEG/GIF/WebP. El documento se integra al fondo oscuro, adapta la tinta oscura y elimina fondos blancos, conservando los resaltados de color; se puede editar dentro de él o continuar debajo. La autocorrección no reescribe el texto importado. También se puede volver a exportar a PDF o DOCX; Notion recibe el texto y las imágenes, con las tablas simplificadas por filas.
+
+No reproduce exactamente la maquetación de Word: fuentes no instaladas pueden sustituirse, los encabezados y pies no se importan, las columnas pasan a texto continuo y ecuaciones, objetos o cuadros de texto complejos pueden perder detalles. La app avisa al detectar varios de estos elementos y conserva el archivo original. Los límites de importación son 40 MB de archivo y 160 MB descomprimidos.
+
+Prueba: `node scripts/test-import-docx.cjs` (o con la ruta de un ejecutable empaquetado como argumento).
+
+### Materiales y archivos arrastrados
+
+Arrastrá DOCX, PDF, PPT o PPTX sobre la hoja. Word queda editable al final de la clase; PDF y PowerPoint se copian como material y se abren con la aplicación asociada en Windows. Cada adjunto tiene una **×** para quitarlo de la clase, con confirmación. Quitar el Word original adjunto no elimina su texto importado. Los archivos originales de la PC se conservan.
+
+La exportación DOCX define todos los márgenes de Word y coloca las propiedades de sección al final del cuerpo, evitando los valores inválidos que impedían abrir algunas descargas en Microsoft Word. Prueba de materiales: `node scripts/test-materials.cjs`.
+
+### Traer de Notion (descarga manual)
+
+**↓ Traer de Notion**, en la barra superior, recupera los cuadernos y clases de Anotador dentro de la misma página configurada como destino. Ambas computadoras deben usar esa página y tener permiso para leerla. No busca todo el espacio de Notion ni importa bases de datos o páginas ajenas a esa estructura. No descarga cambios automáticamente: pulsá el botón cuando quieras traer lo de la otra PC.
+
+Se recuperan texto, títulos, listas, tablas, imágenes y adjuntos alojados en Notion. Las imágenes se muestran dentro del texto: Notion no conserva las coordenadas libres originales. Los adjuntos PDF/PPT/DOCX se descargan a la PC; no se ejecutan ni abren solos. Los archivos externos, formatos no compatibles y descargas fallidas aparecen como avisos; una clase con avisos queda protegida frente al envío automático hasta recuperarla sin avisos.
+
+La identificación usa los IDs de las páginas, no sus nombres. Repetir la descarga sin cambios no crea duplicados. Si se reemplaza una versión local, se conserva íntegra como **(copia local)**, incluso sus capturas y archivos. Estas copias no se envían a Notion. La clase recuperada sí puede editarse y enviarse luego por la sincronización normal. No es una fusión automática de cambios entre computadoras; conviene traer antes de continuar editando.
+
+La app bloquea la edición mientras trae, espera los guardados pendientes, comprueba que no haya cambios concurrentes antes de escribir y guarda `notes.json.bak`. Si la lectura falla, conserva los apuntes existentes y pausa el envío programado hasta una nueva acción. Una descarga correcta muestra cuántas clases se agregaron, actualizaron o quedaron iguales.
+
+Pruebas: `node scripts/test-notion-pull.cjs` y `node scripts/test-notion-ui.cjs`. El motor usa una API simulada para verificar IDs estables, copias locales, descarga de medios, fallos de red, edición concurrente, recuperación de estado y repetición sin duplicados.

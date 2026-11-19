@@ -132,3 +132,27 @@ nav { max-height: calc(100vh - 420px); }
 .download-options:not([hidden]) { display: flex; flex-direction: column; gap: 4px; }
 .download-options button { text-align: left; border: 0; background: transparent; white-space: nowrap; }
 .download-options button:hover, .download-options button:focus-visible { background: #ffffff12; }
+
+.lesson-action-buttons { flex-wrap: wrap; justify-content: flex-end; }
+.editor .docx-import { background: transparent; color: inherit; padding: 0; border-radius: 4px; margin: 16px 0; font: 11pt Arial,sans-serif; line-height: 1.4; overflow-wrap: anywhere; }
+.docx-import p { min-height: 1em; margin: 0 0 8pt; white-space: pre-wrap; }
+.docx-import h1,.docx-import h2,.docx-import h3 { letter-spacing: normal; line-height: 1.3; }
+.docx-import table { max-width: 100%; }
+.docx-import td,.docx-import th { overflow-wrap: anywhere; }
+.docx-import img { max-width: 100%; height: auto; vertical-align: middle; }
+.docx-import a { color: #185abd; text-decoration: underline; }
+
+.editor .docx-import .word-paper-fill { background-color: transparent !important; }
+.editor .docx-import .word-highlight-ink { color: #202020 !important; }
+.editor .docx-import .word-dark-ink { color: #eeeeea !important; }
+.attachment-chip { display: inline-flex; align-items: stretch; max-width: 100%; }
+.attachment-chip [data-file] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 6px 0 0 6px; }
+.attachment-chip [data-remove-file] { border-radius: 0 6px 6px 0; padding: 5px 9px; }
+.paper.file-drag-over { outline: 2px dashed #bfcfba; outline-offset: -4px; background: #263026; }
+.paper.file-drag-over::after { content: 'Soltá PDF, PowerPoint o Word aquí'; position: sticky; bottom: 20px; display: block; width: fit-content; margin: 20px auto; padding: 12px 20px; border-radius: 8px; background: #353e35; color: white; pointer-events: none; z-index: 4; }
+
+#notion-pull { white-space: nowrap; font-size: 12px; padding: 7px 10px; }
+.notion-import img { max-width: 100%; height: auto; }
+.notion-import table { max-width: 100%; }
+#modal { max-height: 85vh; overflow-y: auto; }
+@media(max-width:1050px){.header-sync #notion-status {display:none;}}
