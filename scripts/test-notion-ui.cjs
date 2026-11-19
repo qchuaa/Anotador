@@ -22,6 +22,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('nod
   await page.locator('#notion-token').fill('ui-test-only');await page.locator('#notion-automatic').uncheck();await page.locator('#notion-connect').click();
   await page.waitForFunction(()=>document.querySelector('#notion-token').value==='');
   assert.deepEqual(await app.evaluate(()=>globalThis.connectionForm),{parent:'https://www.notion.so/'+parent.replaceAll('-',''),automatic:false,hasToken:true});
+  await app.evaluate(({ipcMain})=>{ipcMain.removeHandler('notionPull');ipcMain.handle('notionPull',async()=>{await new Promise(r=>setTimeout(r,150));return {books:[{id:'remote',name:'Recuperado',day:1,classes:[]}],report:{added:1,updated:0,copies:0,unchanged:0,warnings:[]}};});});
   await page.screenshot({path:'scripts/notion-settings-preview.png'});
   await page.locator('#notion-close').click();await page.locator('.card').click();await page.locator('.open-class').click();
   await page.locator('.editor').fill('Último cambio antes del envío manual.');
@@ -32,6 +33,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('nod
   await page.locator('#toggle-sidebar').click();await page.locator('#notion-settings').click();await page.locator('#notion-disconnect').click();
   await page.waitForFunction(()=>document.querySelector('#notion-status').textContent==='Notion sin conectar');
   await page.locator('#notion-close').click();assert.deepEqual(errors,[]);
+  await app.evaluate(()=>{globalThis.notionFixture.configured=true;});await page.evaluate(()=>refreshNotion());
+  await page.locator('#notion-pull').click();await page.locator('#modal-title').filter({hasText:'Clases recuperadas'}).waitFor();
+  assert.equal(await page.locator('.card').innerText().then(t=>t.includes('Recuperado')),true);
+  assert.equal(await page.locator('#content').evaluate(el=>el.inert),false);
+  await page.locator('#confirm').click();
   console.log('PASS: destination prefill, masked/cleared token, automatic preference, status, manual sync with latest edits, collapsed sidebar and disconnect.');
  }finally{await app.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -15,8 +15,8 @@ class NotionSync {
  scope(){const id=this.state.config.parentId;return this.state.scopes[id]||(this.state.scopes[id]={books:{},classes:{},uploads:{}});}
  status(){
   const config=this.state.config;let pending=0,warnings=[];
-  if(config.parentId){const scope=this.scope();for(const b of this.readBooks()){if(scope.books[b.id]?.title!==b.name)pending++;for(const c of b.classes){const r=scope.classes[c.id];if(!r || r.hash!==lessonHash(c)||r.pending)pending++;if(r?.warnings)warnings.push(...r.warnings);}}}
-  return {configured:!!config.encryptedToken,parentId:config.parentId||'',destinationUrl:config.parentId?'https://www.notion.so/'+config.parentId.replaceAll('-',''):'',automatic:config.automatic!==false,workspace:config.workspace||'',busy:this.busy,pending,lastSuccess:this.state.lastSuccess||null,error:this.storageError||this.state.error||'',warnings:[...new Set(warnings)],retryAt:this.retryAt};
+  if(config.parentId){const scope=this.scope();for(const b of this.readBooks()){if(scope.books[b.id]?.title!==b.name)pending++;for(const c of b.classes){if(c.notionLocalOnly)continue;const r=scope.classes[c.id];if(!r || r.hash!==lessonHash(c)||r.pending)pending++;if(r?.warnings)warnings.push(...r.warnings);}}}
+  return {configured:!!config.encryptedToken,parentId:config.parentId||'',destinationUrl:config.parentId?'https://www.notion.so/'+config.parentId.replaceAll('-',''):'',automatic:config.automatic!==false,workspace:config.workspace||'',busy:this.busy,pulling:!!this.pulling,pending,lastPull:this.state.lastPull||null,lastSuccess:this.state.lastSuccess||null,error:this.storageError||this.state.error||'',warnings:[...new Set(warnings)],retryAt:this.retryAt};
  }
  token(){return this.decrypt(Buffer.from(this.state.config.encryptedToken,'base64'));}
  async request(method,route,body,token=this.token()){
@@ -118,12 +118,13 @@ class NotionSync {
   const blocks=[block('paragraph',`Clase ${item.number||''} · ${item.date||''}`),...htmlBlocks(item.html)];const warnings=[],uploads=[];
   if(blocks.length===1)blocks.push(block('paragraph','Esta clase todavía no tiene apuntes.'));
   const media=[];
-  for(const im of [...(item.images||[])].sort((a,b)=>a.y-b.y||a.x-b.x)){
+  const imported=[...require('linkedom').parseHTML('<html><body>'+String(item.html||'')+'</body></html>').document.querySelectorAll('.docx-import img,.notion-import img')].map((im,i)=>({id:'word-'+i,src:im.getAttribute('src'),x:0,y:i}));
+  for(const im of [...(item.images||[]),...imported].sort((a,b)=>a.y-b.y||a.x-b.x)){
    const match=String(im.src).match(/^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,([a-zA-Z0-9+/=\r\n]+)$/);
    if(!match){warnings.push('Una captura tiene un formato que no se pudo subir.');continue;}
    media.push({buffer:Buffer.from(match[2],'base64'),name:'Captura-'+im.id+'.'+match[1].split('/')[1],mime:match[1],type:'image'});
   }
-  const mime={'.pdf':'application/pdf','.ppt':'application/vnd.ms-powerpoint','.pptx':'application/vnd.openxmlformats-officedocument.presentationml.presentation'};
+  const mime={'.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document','.pdf':'application/pdf','.ppt':'application/vnd.ms-powerpoint','.pptx':'application/vnd.openxmlformats-officedocument.presentationml.presentation'};
   for(const f of item.files||[]){if(typeof f.id!=='string'||path.basename(f.id)!==f.id){warnings.push('Un adjunto tiene un identificador inválido.');continue;}media.push({filePath:path.join(this.dir,'attachments',f.id),name:f.name,mime:mime[path.extname(f.id).toLowerCase()]||'application/octet-stream',type:path.extname(f.id).toLowerCase()==='.pdf'?'pdf':'file'});}
   if(media.length)blocks.push(block('heading_2','Capturas y material de clase'));
   for(const file of media){
@@ -147,22 +148,23 @@ class NotionSync {
   }
   await this.request('PATCH','/blocks/'+pending.id,{toggle:{rich_text:rich('Apuntes sincronizados desde Anotador')}});
   if(record.containerId && record.containerId!==pending.id)await this.archive(record.containerId);
-  record.containerId=pending.id;record.hash=digest;record.warnings=pending.warnings||[];delete record.pending;this.persist();
+  record.remoteDigest=null;record.pulled=false;record.containerId=pending.id;record.hash=digest;record.warnings=pending.warnings||[];delete record.pending;this.persist();
  }
  async run({force=false}={}){
   if(this.busy||this.configuring)return this.status();
   if(!this.state.config.encryptedToken)throw Error('Primero conectá Notion.');
   clearTimeout(this.timer);this.timer=null;this.busy=true;this.firstDirty=0;this.retryAt=0;this.state.error='';this.state.fatal=false;
   try{
-   const books=JSON.parse(JSON.stringify(this.readBooks())),scope=this.scope();
+   this.restoreImportedMappings();const books=JSON.parse(JSON.stringify(this.readBooks())),scope=this.scope();
    for(const b of books){
     const notebook=await this.ensurePage(scope.books,b.id,this.state.config.parentId,b.name);
     if(force){const page=await this.request('GET','/pages/'+notebook.id);if(page.archived||page.in_trash)throw Error('Un cuaderno está en la papelera de Notion. Restauralo para sincronizar.');}
-    for(const item of [...b.classes].sort((a,b)=>String(a.date).localeCompare(String(b.date))||(a.number||0)-(b.number||0))){
+    for(const item of [...b.classes].filter(c=>!c.notionLocalOnly).sort((a,b)=>String(a.date).localeCompare(String(b.date))||(a.number||0)-(b.number||0))){
      const title=`${item.date||''} · Clase ${item.number||''}${item.title && item.title!=='Clase '+item.number?' · '+item.title:''}`;
      const record=await this.ensurePage(scope.classes,item.id,notebook.id,title);
+     if(record.pullIncomplete){continue;}
      if(force){const page=await this.request('GET','/pages/'+record.id);if(page.archived||page.in_trash)throw Error('Una clase está en la papelera de Notion. Restaurala para sincronizar.');}
-     if(record.hash!==lessonHash(item)||record.pending||force)await this.syncClass(record,item,scope);
+     if(record.hash!==lessonHash(item)||record.pending||(force&&!record.pulled))await this.syncClass(record,item,scope);
     }
    }
    this.state.lastSuccess=new Date().toISOString();this.state.failures=0;this.state.error='';this.persist();
@@ -172,6 +174,14 @@ class NotionSync {
   }finally{this.busy=false;}
   const status=this.status();if(!status.error&&status.pending)this.schedule(1000);return status;
  }
+ restoreImportedMappings(){
+  const scope=this.scope(),parent=this.state.config.parentId;
+  for(const b of this.readBooks()){
+   if(b.notionSource?.parentId===parent&&!scope.books[b.id])scope.books[b.id]={id:b.notionSource.pageId,title:b.name};
+   for(const c of b.classes)if(!c.notionLocalOnly&&c.notionSource?.parentId===parent&&!scope.classes[c.id])scope.classes[c.id]={id:c.notionSource.pageId,title:c.notionSource.title,containerId:c.notionSource.containerId,hash:c.notionSource.baseline,remoteDigest:c.notionSource.digest,pulled:true,pullIncomplete:!!c.notionSource.incomplete};
+  }
+ }
+ async pull(writeBooks){this.restoreImportedMappings();return require('./notion-pull.cjs').pull(this,writeBooks,lessonHash);}
  stop(){clearTimeout(this.timer);this.timer=null;}
 }
 module.exports={NotionSync,parsePageId,lessonHash};

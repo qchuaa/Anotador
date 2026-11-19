@@ -21,3 +21,8 @@ li { orphans: 2; widows: 2; }
 .measure { position: absolute; left: -20000px; top: 0; font: 16px Inter,Arial,sans-serif; line-height: 1.8; padding: 35px; visibility: hidden; }
 .measure p { min-height: 1.8em; }
 .measure .image-explanation { padding-top: var(--source-gap,0px) !important; }
+
+.docx-import { font: 11pt Arial,sans-serif; color: #202020; background: white; line-height: 1.4; }
+.docx-import p { white-space: pre-wrap; }
+.docx-import img { max-width: 100%; max-height: 220mm; object-fit: contain; }
+.docx-import table { max-width: 100%; }

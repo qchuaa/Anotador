@@ -1,15 +1,17 @@
-let notionState=null,notionPollBusy=false;
+let notionState=null,notionPollBusy=false,notionPullBusy=false;
 function showNotionState(state){
  notionState=state;
- const label=!state.configured?'Notion sin conectar':state.busy?'Sincronizando…':state.error?'Notion: pendiente':state.pending?`${state.pending} cambios pendientes`:state.warnings.length?'Sincronizado con avisos':state.lastSuccess?'Notion al día':'Notion conectado';
+ const label=!state.configured?'Notion sin conectar':state.pulling?'Trayendo de Notion…':state.busy?'Sincronizando…':state.error?'Notion: pendiente':state.pending?`${state.pending} cambios pendientes`:state.warnings.length?'Sincronizado con avisos':state.lastSuccess?'Notion al día':'Notion conectado';
  $('#notion-status').textContent=label;
  $('#notion-status').title=state.error||state.warnings.join('\n')||(state.lastSuccess?'Última sincronización: '+new Date(state.lastSuccess).toLocaleString('es-AR'):'');
  $('#notion-status').classList.toggle('sync-error',!!state.error);
- $('#notion-sync-now').disabled=state.busy;
+ $('#notion-sync-now').disabled=state.busy||notionPullBusy;
+ $('#notion-pull').disabled=state.busy||notionPullBusy;
+ $('#notion-pull').textContent=notionPullBusy||state.pulling?'↓ Trayendo…':'↓ Traer de Notion';
  $('#notion-sync-now').textContent=state.busy?'↥ Sincronizando…':'↥ Sincronizar ahora';
  $('#notion-settings').textContent=state.configured?'↥ Notion · Ajustes':'↥ Conectar Notion';
  if($('#notion-dialog').open){
-  $('#notion-detail').textContent=[state.workspace,label,state.lastSuccess?'Último envío: '+new Date(state.lastSuccess).toLocaleString('es-AR'):'',state.error,...state.warnings].filter(Boolean).join('\n');
+  $('#notion-detail').textContent=[state.workspace,label,state.lastSuccess?'Último envío: '+new Date(state.lastSuccess).toLocaleString('es-AR'):'',state.lastPull?'Última descarga: '+new Date(state.lastPull).toLocaleString('es-AR'):'',state.error,...state.warnings].filter(Boolean).join('\n');
   $('#notion-open').hidden=!state.parentId;
   $('#notion-disconnect').hidden=!state.configured;
  }
@@ -42,3 +44,17 @@ $('#notion-sync-now').onclick=async()=>{
 };
 window.addEventListener('online',()=>{if(notionState?.configured&&notionState.automatic)api.notionSync().then(showNotionState).catch(()=>{});});
 refreshNotion();setInterval(refreshNotion,2500);
+
+$('#notion-pull').onclick=async()=>{
+ if(notionPullBusy)return;
+ if(!notionState?.configured)return openNotionSettings();
+ if(importingWord||receivingFiles){toast('Esperá a que termine la importación de archivos.');return;}
+ notionPullBusy=true;capture();clearTimeout(window.correctTimer);
+ $('#content').inert=true;$('#sidebar').inert=true;$('#toggle-sidebar').disabled=true;
+ try{
+  await saveChain;showNotionState(notionState);
+  const result=await api.notionPull();books=result.books;home();
+  const r=result.report;
+  modal('Clases recuperadas',`<p>${r.added} clases nuevas · ${r.updated} actualizadas · ${r.unchanged} sin cambios.</p>`+(r.copies?`<p>Se conservaron ${r.copies} versiones anteriores como «copia local». Esas copias no se envían a Notion.</p>`:'')+(r.warnings.length?'<ul>'+r.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul>':''),()=>{},'Entendido');
+ }catch(e){toast('No se pudo traer de Notion: '+e.message);}finally{notionPullBusy=false;$('#content').inert=false;$('#sidebar').inert=document.body.classList.contains('sidebar-collapsed');$('#toggle-sidebar').disabled=false;refreshNotion();}
+};

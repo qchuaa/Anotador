@@ -21,9 +21,9 @@ async function exportPDF(parent,payload) {
     printWindow.webContents.on('will-navigate',e=>e.preventDefault());
     await printWindow.loadFile(path.join(__dirname,'pdf.html'));
     await printWindow.webContents.executeJavaScript(`window.renderExport(${JSON.stringify(payload)})`);
-    const data=format==='docx'?await HTMLtoDOCX(await printWindow.webContents.executeJavaScript('window.wordExportHTML()'),null,{title,creator:'Anotador',font:'Arial',fontSize:22,pageSize:{width:11906,height:16838},margins:{top:1134,right:1134,bottom:1134,left:1134}}):await printWindow.webContents.printToPDF({printBackground:true,pageSize:'A4',preferCSSPageSize:true,displayHeaderFooter:true,headerTemplate:'<div></div>',footerTemplate:'<div style="width:100%;text-align:center;font-size:9px;color:#666;font-family:Arial">Anotador · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',generateTaggedPDF:true});
+    const data=format==='docx'?await HTMLtoDOCX(await printWindow.webContents.executeJavaScript('window.wordExportHTML()'),null,{title,creator:'Anotador',font:'Arial',fontSize:22,pageSize:{width:11906,height:16838},margins:{top:1134,right:1134,bottom:1134,left:1134,header:720,footer:720,gutter:0}}):await printWindow.webContents.printToPDF({printBackground:true,pageSize:'A4',preferCSSPageSize:true,displayHeaderFooter:true,headerTemplate:'<div></div>',footerTemplate:'<div style="width:100%;text-align:center;font-size:9px;color:#666;font-family:Arial">Anotador · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',generateTaggedPDF:true});
     const filePath=result.filePath.toLowerCase().endsWith('.'+format)?result.filePath:result.filePath+'.'+format;
-    await fs.writeFile(filePath,data);
+    await fs.writeFile(filePath,format==='docx'?await require('./docx-package.cjs').normalizeDocx(data):data);
     return {canceled:false,filePath};
   }finally{
     if(printWindow && !printWindow.isDestroyed())printWindow.destroy();
