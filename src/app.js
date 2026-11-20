@@ -225,24 +225,28 @@ function confirmDelete(title, message, action) {
   $('#modal button[value="cancel"]').focus();
 }
 
-function deleteBook(notebook) {
-  confirmDelete('Borrar cuaderno', '¿Querés borrar el cuaderno <strong>'+esc(notebook.name)+'</strong> y sus '+notebook.classes.length+' clases? Se eliminarán todos sus apuntes.', () => {
-    clearTimeout(window.correctTimer);
-    books = books.filter(item => item.id !== notebook.id);
-    selected = selection = null;
-    save();
-    home();
-  });
+let deletionBusy=false;
+function chooseDelete(notebook,item){
+ if(deletionBusy)return;
+ const title=item?'Borrar clase':'Borrar cuaderno';
+ const name=item?classLabel(item):notebook.name;
+ modal(title,'<p>¿Querés borrar <strong>'+esc(name)+'</strong>'+(item?'':' y sus '+notebook.classes.length+' clases')+'?</p><label for="delete-location">Dónde borrar</label><select id="delete-location"><option value="local">Solo en esta PC</option><option value="both">En esta PC y en Notion</option></select><p id="delete-details"></p><p>Los apuntes borrados de esta PC no se pueden recuperar desde la aplicación.</p>',()=>performDelete(notebook,item,$('#delete-location').value),'Borrar');
+ const update=()=>{$('#delete-details').textContent=$('#delete-location').value==='both'?(item?.notionLocalOnly?'Esta copia es solo local y no tiene página en Notion. Elegí Solo en esta PC.':(item?'La página de esta clase':'El cuaderno y todas sus subpáginas')+' se enviará a la papelera de Notion. En las otras PCs las copias ya descargadas se conservan.'):'La copia de Notion se conserva y puede volver a aparecer si pulsás Traer de Notion.';};
+ $('#delete-location').onchange=update;update();$('#modal button[value="cancel"]').focus();
 }
-
-function deleteLesson(notebook, item) {
-  confirmDelete('Borrar clase', '¿Querés borrar <strong>'+esc(classLabel(item))+'</strong> del cuaderno <strong>'+esc(notebook.name)+'</strong>? Se eliminarán sus apuntes y capturas.', () => {
-    clearTimeout(window.correctTimer);
-    notebook.classes = notebook.classes.filter(current => current.id !== item.id);
-    selected = selection = null;
-    save();
-    openBook(notebook);
-  });
+function deleteBook(notebook){chooseDelete(notebook,null);}
+function deleteLesson(notebook,item){chooseDelete(notebook,item);}
+async function performDelete(notebook,item,location){
+ if(deletionBusy)return;deletionBusy=true;capture();clearTimeout(window.correctTimer);
+ $('#content').inert=true;$('#sidebar').inert=true;$('#toggle-sidebar').disabled=true;
+ try{
+  await saveChain;
+  const result=await api.deleteItem({bookId:notebook.id,classId:item?.id,location});
+  books=result.books;selected=selection=null;
+  const remaining=books.find(b=>b.id===notebook.id);if(item&&remaining)openBook(remaining);else home();
+  toast(location==='both'?'Borrado de esta PC y enviado a la papelera de Notion.':'Borrado solo de esta PC.');
+ }catch(e){toast('No se completó el borrado. '+e.message);}
+ finally{deletionBusy=false;$('#content').inert=false;$('#sidebar').inert=document.body.classList.contains('sidebar-collapsed');$('#toggle-sidebar').disabled=false;refreshNotion();}
 }
 
 function clearImageSelection() {

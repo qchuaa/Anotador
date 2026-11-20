@@ -1,0 +1,5 @@
+Spanish word frequencies from FrequencyWords by Hermit Dave, based on OpenSubtitles2018 (OPUS).
+Source: https://github.com/hermitdave/FrequencyWords/blob/master/content/2018/es/es_50k.txt
+Dataset license: Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+The dataset is distributed unchanged. Application code has its own license.

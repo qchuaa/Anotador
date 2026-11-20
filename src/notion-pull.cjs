@@ -55,6 +55,7 @@ async function convert(sync,blocks,warnings){
  return {html:'<div class="notion-import">'+await render(blocks)+'</div><p><br></p>',images:[],files};
 }
 async function pull(sync,writeBooks,lessonHash){
+ sync.checkPendingDeletes();
  if(sync.busy||sync.configuring)throw Error('Esperá a que termine la sincronización.');
  if(!sync.state.config.encryptedToken)throw Error('Primero conectá Notion.');
  if(sync.storageError)throw Error(sync.storageError);

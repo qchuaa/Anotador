@@ -90,3 +90,15 @@ La identificación usa los IDs de las páginas, no sus nombres. Repetir la desca
 La app bloquea la edición mientras trae, espera los guardados pendientes, comprueba que no haya cambios concurrentes antes de escribir y guarda `notes.json.bak`. Si la lectura falla, conserva los apuntes existentes y pausa el envío programado hasta una nueva acción. Una descarga correcta muestra cuántas clases se agregaron, actualizaron o quedaron iguales.
 
 Pruebas: `node scripts/test-notion-pull.cjs` y `node scripts/test-notion-ui.cjs`. El motor usa una API simulada para verificar IDs estables, copias locales, descarga de medios, fallos de red, edición concurrente, recuperación de estado y repetición sin duplicados.
+
+### Elegir dónde borrar
+
+Al borrar una clase o un cuaderno, el diálogo permite elegir **Solo en esta PC** (predeterminado) o **En esta PC y en Notion**. La primera conserva la página remota y puede recuperarse con Traer de Notion. La segunda requiere conexión y una página vinculada: primero envía esa página a la papelera de Notion y después elimina los apuntes de esta PC. Al borrar un cuaderno también se envían a la papelera sus subpáginas. Las copias locales no tienen página remota: usá Solo en esta PC.
+
+Si falla la conexión, se conservan los apuntes locales y se puede reintentar desde Borrar. Un borrado remoto iniciado sin confirmar bloquea los envíos y descargas de Notion hasta reintentar o elegir Solo en esta PC, incluso después de reiniciar, para no recrear páginas por error. Las copias ya descargadas en otras computadoras se conservan; no se propaga el borrado automáticamente a esos discos.
+
+Pruebas: `node scripts/test-notion-delete.cjs` verifica papelera, fallos de red/disco y reintentos; `node scripts/test-delete.cjs` verifica opciones, cancelación y persistencia desde la interfaz.
+
+La autocorrección también reconoce errores de teclado cercanos en palabras frecuentes (por ejemplo, decoa → decía, buno → bueno y gue → fue). Conserva las palabras válidas y las excepciones personales; las correcciones se pueden revertir desde su marca. Prueba: `node scripts/test-typo-correction.cjs`.
+
+El corrector busca ahora en todo el diccionario español, incluidas formas flexionadas: letras faltantes, sobrantes, cambiadas e inversiones adyacentes. Combina cercanía del teclado y frecuencia de uso para elegir entre candidatos, conserva las palabras válidas y las excepciones personales, y evita decidir si las alternativas quedan muy parejas. Se corrigen al terminar la palabra; no realiza interpretación semántica de la frase. Usa localmente la lista española de FrequencyWords/OpenSubtitles2018 (50.000 entradas, CC BY-SA 4.0; fuente y atribución en `src/assets/es-frequency-LICENSE.txt`). Prueba ampliada: `node scripts/test-spelling-typos.cjs`.

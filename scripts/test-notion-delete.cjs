@@ -1,0 +1,20 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {NotionSync}=require('../src/notion-sync.cjs');
+(async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'notion-delete-'));
+ let books,fail=false,loseResponse=false,trashed=false,calls=[];
+ const sync=new NotionSync({dir,readBooks:()=>structuredClone(books),encrypt:s=>Buffer.from(s),decrypt:b=>b.toString()});
+ const reset=()=>{books=[{id:'b',name:'Book',classes:[{id:'c',title:'Clase'},{id:'local',notionLocalOnly:true}]}];sync.state={config:{parentId:'root',encryptedToken:'test',automatic:false},scopes:{root:{books:{b:{id:'remote-book'}},classes:{c:{id:'remote-class'}},uploads:{}}}};trashed=false;calls=[];fail=false;};
+ const write=data=>{books=data;};
+ sync.request=async(method,url,body)=>{calls.push({method,url,body});if(fail)throw Error('offline');if(method==='PATCH'){trashed=true;if(loseResponse){loseResponse=false;throw Error('lost response');}return {in_trash:true};}return {in_trash:trashed};};
+ reset();await sync.deleteItem({bookId:'b',classId:'c',location:'local'},write);assert.equal(calls.length,0);assert.equal(books[0].classes.length,1);
+ reset();await sync.deleteItem({bookId:'b',classId:'c',location:'both'},write);assert.equal(calls[1].url,'/pages/remote-class');assert.deepEqual(calls[1].body,{in_trash:true});assert.equal(books[0].classes.length,1);
+ reset();await sync.deleteItem({bookId:'b',location:'both'},write);assert.equal(calls[1].url,'/pages/remote-book');assert.equal(books.length,0);
+ reset();await assert.rejects(sync.deleteItem({bookId:'b',classId:'local',location:'both'},write),/vinculada/);assert.equal(calls.length,0);assert.equal(books[0].classes.length,2);
+ reset();fail=true;await assert.rejects(sync.deleteItem({bookId:'b',classId:'c',location:'both'},write),/offline/);assert.equal(books[0].classes.length,2);assert.throws(()=>sync.checkPendingDeletes(),/sin completar/);
+ const restarted=new NotionSync({dir,readBooks:()=>books});assert.throws(()=>restarted.checkPendingDeletes(),/sin completar/);
+ fail=false;await sync.deleteItem({bookId:'b',classId:'c',location:'both'},write);assert.equal(books[0].classes.length,1);sync.checkPendingDeletes();
+ reset();loseResponse=true;await assert.rejects(sync.deleteItem({bookId:'b',classId:'c',location:'both'},write),/lost response/);await sync.deleteItem({bookId:'b',classId:'c',location:'both'},write);assert.equal(calls.filter(c=>c.method==='PATCH').length,1);assert.equal(books[0].classes.length,1);
+ reset();await assert.rejects(sync.deleteItem({bookId:'b',classId:'c',location:'both'},()=>{throw Error('disk full');}),/disk full/);assert.equal(books[0].classes.length,2);assert.throws(()=>sync.checkPendingDeletes());await sync.deleteItem({bookId:'b',classId:'c',location:'both'},write);assert.equal(books[0].classes.length,1);
+ sync.stop();console.log('PASS: local-only, remote class/book trash, unlinked copies, offline preservation, durable intent, response loss and disk-failure retry.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
