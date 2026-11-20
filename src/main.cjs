@@ -12,7 +12,7 @@ app.whenReady().then(()=>{
  const readBooks=()=>{try{return JSON.parse(fs.readFileSync(path.join(dir,'notes.json'),'utf8'));}catch(e){if(e.code==='ENOENT')return [];throw e;}};
  const writeBooks=data=>{const f=path.join(dir,'notes.json');fs.writeFileSync(f+'.tmp',JSON.stringify(data));if(fs.existsSync(f))fs.copyFileSync(f,f+'.bak');fs.renameSync(f+'.tmp',f);};
  notion=new NotionSync({dir,readBooks,encrypt:text=>{if(!safeStorage.isEncryptionAvailable())throw Error('Windows no puede guardar la clave cifrada.');return safeStorage.encryptString(text);},decrypt:buffer=>safeStorage.decryptString(buffer)});
- for(const [name,handler] of Object.entries({notionStatus:()=>notion.status(),notionConfigure:data=>notion.configure(data),notionAutomatic:value=>notion.setAutomatic(value),notionDisconnect:()=>notion.disconnect(),notionSync:()=>notion.run({force:true}),notionPull:()=>notion.pull(writeBooks),notionOpen:target=>{
+ for(const [name,handler] of Object.entries({notionStatus:()=>notion.status(),notionConfigure:data=>notion.configure(data),notionAutomatic:value=>notion.setAutomatic(value),notionDisconnect:()=>notion.disconnect(),notionSync:()=>notion.run({force:true}),notionPull:()=>notion.pull(writeBooks),deleteItem:data=>notion.deleteItem(data,writeBooks),notionOpen:target=>{
   const links={tokens:'https://www.notion.so/developers/tokens',guide:'https://developers.notion.com/guides/connections-and-tokens/personal-access-tokens',destination:notion.status().destinationUrl};
   if(!links[target])throw Error('Destino de Notion inválido.');return shell.openExternal(links[target]);
  }}))ipcMain.handle(name,(event,data)=>{if(event.sender!==win.webContents)throw Error('Ventana no autorizada');return handler(data);});

@@ -155,7 +155,7 @@ class NotionSync {
   if(!this.state.config.encryptedToken)throw Error('Primero conectá Notion.');
   clearTimeout(this.timer);this.timer=null;this.busy=true;this.firstDirty=0;this.retryAt=0;this.state.error='';this.state.fatal=false;
   try{
-   await require('./notion-dictionary.cjs').syncDictionary(this);
+   this.checkPendingDeletes();await require('./notion-dictionary.cjs').syncDictionary(this);
    this.restoreImportedMappings();const books=JSON.parse(JSON.stringify(this.readBooks())),scope=this.scope();
    for(const b of books){
     const notebook=await this.ensurePage(scope.books,b.id,this.state.config.parentId,b.name);
@@ -175,7 +175,10 @@ class NotionSync {
   }finally{this.busy=false;}
   const status=this.status();if(!status.error)this.schedule(status.pending?1000:60000);return status;
  }
+ checkPendingDeletes(){if(Object.keys(this.state.deletions||{}).length)throw Error('Hay un borrado sin completar. Volvé a borrar ese elemento para reintentarlo o elegí Solo en esta PC.');}
+ async deleteItem(data,writeBooks){return require('./notion-delete.cjs').deleteItem(this,data,writeBooks);}
  restoreImportedMappings(){
+  if(!this.state.config.parentId)return;
   const scope=this.scope(),parent=this.state.config.parentId;
   for(const b of this.readBooks()){
    if(b.notionSource?.parentId===parent&&!scope.books[b.id])scope.books[b.id]={id:b.notionSource.pageId,title:b.name};
