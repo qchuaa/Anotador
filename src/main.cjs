@@ -6,7 +6,8 @@ let win,dir,notion;
 if(!app.requestSingleInstanceLock()){app.quit();}else{
 app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
 app.whenReady().then(()=>{
- ipcMain.handle('spelling',(_,words)=>require('./spelling.cjs').suggestions(words));
+ ipcMain.handle('rememberSpelling',(_,word)=>{require('./spelling.cjs').remember(word,app.getPath('userData'));notion?.onSaved();});
+ ipcMain.handle('spelling',(_,words)=>require('./spelling.cjs').suggestions(words,app.getPath('userData')));
  dir=app.getPath('userData');fs.mkdirSync(path.join(dir,'attachments'),{recursive:true});
  const readBooks=()=>{try{return JSON.parse(fs.readFileSync(path.join(dir,'notes.json'),'utf8'));}catch(e){if(e.code==='ENOENT')return [];throw e;}};
  const writeBooks=data=>{const f=path.join(dir,'notes.json');fs.writeFileSync(f+'.tmp',JSON.stringify(data));if(fs.existsSync(f))fs.copyFileSync(f,f+'.bak');fs.renameSync(f+'.tmp',f);};

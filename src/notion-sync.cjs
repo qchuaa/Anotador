@@ -155,6 +155,7 @@ class NotionSync {
   if(!this.state.config.encryptedToken)throw Error('Primero conectá Notion.');
   clearTimeout(this.timer);this.timer=null;this.busy=true;this.firstDirty=0;this.retryAt=0;this.state.error='';this.state.fatal=false;
   try{
+   await require('./notion-dictionary.cjs').syncDictionary(this);
    this.restoreImportedMappings();const books=JSON.parse(JSON.stringify(this.readBooks())),scope=this.scope();
    for(const b of books){
     const notebook=await this.ensurePage(scope.books,b.id,this.state.config.parentId,b.name);
@@ -172,7 +173,7 @@ class NotionSync {
    this.state.error=e.message;this.state.failures=(this.state.failures||0)+1;this.state.fatal=!e.retryable;this.persist();
    if(e.retryable){const ms=Math.min(300000,30000*2**Math.min(4,this.state.failures-1));this.retryAt=Date.now()+ms;this.schedule(ms);}
   }finally{this.busy=false;}
-  const status=this.status();if(!status.error&&status.pending)this.schedule(1000);return status;
+  const status=this.status();if(!status.error)this.schedule(status.pending?1000:60000);return status;
  }
  restoreImportedMappings(){
   const scope=this.scope(),parent=this.state.config.parentId;

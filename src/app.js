@@ -69,7 +69,7 @@ function renderImages() {
     el.onpointerup=el.onpointercancel=()=>{el.onpointermove=null;resizePaper();save();};
   }
 }
-const corrections={calculo:'cálculo',fisica:'física',tambien:'también',ademas:'además',funcion:'función',ecuacion:'ecuación',derivacion:'derivación',integracion:'integración',limite:'límite',limites:'límites',matematicas:'matemáticas',teoria:'teoría',energia:'energía',aceleracion:'aceleración',definicion:'definición',numero:'número',numeros:'números',analisis:'análisis',estadistica:'estadística',distribucion:'distribución',probavilidad:'probabilidad',resivir:'recibir',nesesario:'necesario',ejemlo:'ejemplo',porq:'porque'};
+const corrections={plasmido:'plásmido',antibiotico:'antibiótico',calculo:'cálculo',fisica:'física',tambien:'también',ademas:'además',funcion:'función',ecuacion:'ecuación',derivacion:'derivación',integracion:'integración',limite:'límite',limites:'límites',matematicas:'matemáticas',teoria:'teoría',energia:'energía',aceleracion:'aceleración',definicion:'definición',numero:'número',numeros:'números',analisis:'análisis',estadistica:'estadística',distribucion:'distribución',probavilidad:'probabilidad',resivir:'recibir',nesesario:'necesario',ejemlo:'ejemplo',porq:'porque'};
 async function correct() {
   const ed=$('.editor');
   if(!ed || document.activeElement!==ed || !getSelection().isCollapsed)return;
@@ -95,7 +95,8 @@ async function correct() {
       // A word touching the caret is still being typed. Enter completes the previous block.
       if(end===node.length && (node.nextSibling===marker || node.nextSibling?.nodeType===3 && node.nextSibling.data))continue;
       const lower=original.toLowerCase();
-      let replacement=corrections[lower] || suggested[lower];
+      if(suggested[lower]===false || rejectedSpelling.has(lower))continue;
+      let replacement=suggested[lower] || corrections[lower];
       if(!replacement || replacement===lower)continue;
       if(original===original.toUpperCase())replacement=replacement.toUpperCase();
       else if(original[0]===original[0].toUpperCase())replacement=replacement[0].toUpperCase()+replacement.slice(1);
@@ -490,6 +491,7 @@ function setupFileDrop(paper){
 document.addEventListener('dragover',e=>{if([...(e.dataTransfer?.types||[])].includes('Files'))e.preventDefault();});
 document.addEventListener('drop',e=>{if([...(e.dataTransfer?.types||[])].includes('Files'))e.preventDefault();});
 
+const rejectedSpelling=new Set();
 let correctionPopup;
 function hideCorrectionPopup(){correctionPopup?.remove();correctionPopup=null;}
 document.addEventListener('pointerover',event=>{
@@ -504,10 +506,12 @@ document.addEventListener('pointerover',event=>{
   const label=document.createElement('div');label.textContent='«'+original+'» → «'+word.textContent+'»';
   const button=document.createElement('button');button.type='button';button.textContent='Volver a «'+original+'»';
   button.onmousedown=e=>e.preventDefault();
-  button.onclick=()=>{
+  button.onclick=async()=>{
     if(!word.isConnected){hideCorrectionPopup();return;}
     word.textContent=original;word.classList.remove('correction');word.dataset.keepOriginal=original;word.removeAttribute('title');word.removeAttribute('data-original');
+    rejectedSpelling.add(original.toLowerCase());
     hideCorrectionPopup();capture();
+    try{await api.rememberSpelling(original);}catch(error){toast('Se restauró la palabra, pero no se pudo guardar la preferencia: '+error.message);}
   };
   popup.append(label,button);document.body.append(popup);correctionPopup=popup;
   const bounds=word.getBoundingClientRect();popup.style.left=Math.max(8,Math.min(bounds.left,innerWidth-popup.offsetWidth-8))+'px';popup.style.top=Math.max(8,Math.min(bounds.bottom,innerHeight-popup.offsetHeight-8))+'px';

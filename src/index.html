@@ -3,7 +3,7 @@
 <h2 id="notion-title">Conectar con Notion</h2>
 <p>Una página por cuaderno y una subpágina por clase. Tus apuntes originales siempre se guardan primero en esta PC.</p>
 <details class="notion-setup-steps" open><summary>Cómo conectar por primera vez</summary><ol><li>Abrí Notion y creá un token personal con la capacidad <b>Notion API</b>, con nombre «Anotador».</li><li>Pegá la clave abajo. Se guarda cifrada en Windows.</li><li>Elegí una página de destino. Si usás una conexión interna, compartí esa página con la conexión.</li></ol><button type="button" id="notion-token-page">Crear token en Notion ↗</button> <button type="button" id="notion-guide">Ver instrucciones ↗</button></details>
-<label for="notion-token">Token de Notion</label><input id="notion-token" type="password" autocomplete="off" spellcheck="false" placeholder="Pegá tu token aquí">
+<p class="hint">El diccionario personal también se comparte con los equipos conectados a esta misma página. Con sincronización automática, se revisa cada minuto mientras Anotador está abierto.</p><label for="notion-token">Token de Notion</label><input id="notion-token" type="password" autocomplete="off" spellcheck="false" placeholder="Pegá tu token aquí">
 <label for="notion-parent">Enlace de la página de destino</label><input id="notion-parent" type="text" required placeholder="https://www.notion.so/…">
 <label class="notion-checkbox"><input type="checkbox" id="notion-automatic" checked> Sincronizar automáticamente al guardar</label>
 <p class="hint">Envía cambios tras 15 segundos sin escribir (o cada minuto mientras escribís), con Anotador abierto. Sin Internet, conserva los cambios y vuelve a intentar. Al reabrir, retoma los pendientes.</p>
